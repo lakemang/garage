@@ -31,7 +31,7 @@ def load_data(data_dir):
 
 ROOT_PATH = "/home/hguan/project/machine-learning/garage/"
 train_data_dir = os.path.join(ROOT_PATH, "training")
-#test_data_dir = os.path.join(ROOT_PATH, "TrafficSigns/Testing")
+test_data_dir = os.path.join(ROOT_PATH, "testing")
 
 images, labels = load_data(train_data_dir)
 
@@ -42,22 +42,81 @@ print(len(set(labels_array)))
 # Resize images
 images32 = [transform.resize(image, (28, 28)) for image in images]
 images32 = np.array(images32)
-
-# Determine the (random) indexes of the images
-traffic_signs = [1, 10, 9, 13]
-
-
-# Resize images
-images32 = [transform.resize(image, (28, 28)) for image in images]
-images32 = np.array(images32)
-
 images32 = rgb2gray(np.array(images32))
-for i in range(len(traffic_signs)):
-    plt.subplot(1, 4, i + 1)
+
+print(images32.shape)
+
+x = tf.placeholder(dtype = tf.float32, shape = [None, 28, 28])
+y = tf.placeholder(dtype = tf.int32, shape = [None])
+images_flat = tf.contrib.layers.flatten(x)
+logits = tf.contrib.layers.fully_connected(images_flat, 2, tf.nn.relu)
+loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels = y, logits = logits))
+train_op = tf.train.AdamOptimizer(learning_rate=0.001).minimize(loss)
+correct_pred = tf.argmax(logits, 1)
+accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+print("images_flat: ", images_flat)
+print("logits: ", logits)
+print("loss: ", loss)
+print("predicted_labels: ", correct_pred)
+
+sess = tf.Session()
+
+sess.run(tf.global_variables_initializer())
+
+for i in range(201):
+        _, accuracy_val = sess.run([train_op, accuracy], feed_dict={x: images32, y: labels})
+        if i % 10 == 0:
+            print('EPOCH', i)
+            print("Loss: ", accuracy_val)
+        print('DONE WITH EPOCH')
+
+
+# Pick 10 random images
+sample_indexes = random.sample(range(len(images32)), 10)
+sample_images = [images32[i] for i in sample_indexes]
+sample_labels = [labels[i] for i in sample_indexes]
+
+# Run the "predicted_labels" op.
+predicted = sess.run([correct_pred], feed_dict={x: sample_images})[0]
+
+# Print the real and predicted labels
+print(sample_labels)
+print(predicted)
+
+# Display the predictions and the ground truth visually.
+fig = plt.figure(figsize=(10, 10))
+for i in range(len(sample_images)):
+    truth = sample_labels[i]
+    prediction = predicted[i]
+    plt.subplot(5, 2,1+i)
     plt.axis('off')
-    plt.imshow(images32[traffic_signs[i]], cmap="gray")
-    plt.subplots_adjust(wspace=0.5)
+    color='green' if truth == prediction else 'red'
+    plt.text(40, 10, "Truth:        {0}\nPrediction: {1}".format(truth, prediction),
+             fontsize=12, color=color)
+    plt.imshow(sample_images[i])
 
 plt.show()
 
-print(images32.shape)
+##########################################################################
+# Load the test data
+test_images, test_labels = load_data(test_data_dir)
+
+# Transform the images to 28 by 28 pixels
+test_images28 = [transform.resize(image, (28, 28)) for image in test_images]
+
+# Convert to grayscale
+from skimage.color import rgb2gray
+test_images28 = rgb2gray(np.array(test_images28))
+
+# Run predictions against the full test set.
+predicted = sess.run([correct_pred], feed_dict={x: test_images28})[0]
+
+# Calculate correct matches
+match_count = sum([int(y == y_) for y, y_ in zip(test_labels, predicted)])
+
+# Calculate the accuracy
+accuracy = match_count / len(test_labels)
+
+# Print the accuracy
+print("Accuracy: {:.3f}".format(accuracy))
