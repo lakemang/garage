@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/hguan/project/machine-learning/garage/models.ckpt"
+all_model_checkpoint_paths: "/home/hguan/project/machine-learning/garage/models.ckpt"

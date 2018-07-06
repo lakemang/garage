@@ -41,7 +41,7 @@ flags.DEFINE_integer('hidden2', 128, 'Number of units in hidden layer 2.')
 flags.DEFINE_integer('num_epochs', 50, 'Number of learning epochs.')
 flags.DEFINE_integer('batch_size', 10, 'Batch size.')
 flags.DEFINE_float('keep_prob', 0.5, 'Keep probability for drop out.')
-flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
+flags.DEFINE_float('learning_rate', 0.05, 'Initial learning rate.')
 
 def inference(data, data_size, keep_prob):
     # # Hidden layer 1
@@ -80,7 +80,10 @@ def inference(data, data_size, keep_prob):
 def loss(logits, labels):
     labels = tf.to_int64(labels)
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels, name='xentropy')
-    loss = tf.reduce_mean(cross_entropy, name='xentropy_mean')
+    vars = tf.trainable_variables()
+    reg = tf.add_n([tf.nn.l2_loss(v) for v in vars])*0.1
+#    reg = 0.01*(tf.nn.l2_loss(w) + tf.nn.l2_loss(b))
+    loss = tf.reduce_mean(cross_entropy, name='xentropy_mean') + reg
     return loss
 
 def training(loss):
@@ -211,46 +214,63 @@ def run_classifier(data):
                 v = logits.eval(feed_dict={data_placeholder: [data[i]]})
                 sm = tf.nn.softmax(v)
                 smv = sm.eval()
-                prediction_list.append(smv[0])
+#                prediction_list.append(smv[0])
 
                 cls = np.argmax(smv)   # get the class number with largest value by argmax
-                # print('prediction=%d (%f)' % (cls, smv[0][cls]))
+                prediction_list.append(cls)
+                print('prediction=%d (%f)' % (cls, smv[0][cls]))
 
         return prediction_list
+
+def test_data():
+    # Testing data
+    images, labels = load_data(test_data_dir)
+    images_array = np.array(images)
+    labels_array = np.array(labels)
+
+    # Resize images
+    images32 = [transform.resize(image, (28, 28)) for image in images]
+    images32 = np.array(images32)
+    images32 = rgb2gray(np.array(images32))
+    images32 = images32.reshape(-1, 784)
+    return images32
+
 
 ROOT_PATH = "/home/hguan/project/machine-learning/garage/"
 train_data_dir = os.path.join(ROOT_PATH, "training")
 test_data_dir = os.path.join(ROOT_PATH, "testing")
 
 # Training data
-images, labels = load_data(train_data_dir)
-images_array = np.array(images)
-labels_array = np.array(labels)
-
-# Resize images
-images32 = [transform.resize(image, (28, 28)) for image in images]
-images32 = np.array(images32)
-images32 = rgb2gray(np.array(images32))
-images32 = images32.reshape(-1, 784)
-
-#run_training(images32, labels)
-
-
-# Testing data
 images, labels = load_data(test_data_dir)
 images_array = np.array(images)
 labels_array = np.array(labels)
 
 # Resize images
 images32 = [transform.resize(image, (28, 28)) for image in images]
-images32 = np.array(images32)
-images32 = rgb2gray(np.array(images32))
+images32c = np.array(images32)
+images32 = rgb2gray(np.array(images32c))
 images32 = images32.reshape(-1, 784)
 
-#result_list = run_classifier(images32)
-sess = tf.Session()
-predicted = sess.run([correct_pred], feed_dict={}
+#run_training(images32, labels)
 
-print(result_list)
-print("==================")
+#images32 = test_data()
+predicted = run_classifier(images32)
+
+# Print the real and predicted labels
 print(labels)
+print(predicted)
+
+# Display the predictions and the ground truth visually.
+fig = plt.figure(figsize=(16, 16))
+for i in range(len(images)):
+#    print('i=', i)
+    truth = labels[i]
+    prediction = predicted[i]
+    plt.subplot(20, 6,1+i)
+    plt.axis('off')
+    color='green' if truth == prediction else 'red'
+    plt.text(700, 300, "Truth:        {0}\nPrediction: {1}".format(truth, prediction),
+             fontsize=12, color=color)
+    plt.imshow(images[i])
+
+plt.show()
