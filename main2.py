@@ -32,7 +32,7 @@ def load_data(data_dir):
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer('num_classes', 2, 'Number of classes.')
+flags.DEFINE_integer('num_classes', 3, 'Number of classes.')
 flags.DEFINE_integer('num_variables', 784, 'Number of variables.')
 
 # Hyper Parameters
@@ -41,7 +41,7 @@ flags.DEFINE_integer('hidden2', 128, 'Number of units in hidden layer 2.')
 flags.DEFINE_integer('num_epochs', 50, 'Number of learning epochs.')
 flags.DEFINE_integer('batch_size', 10, 'Batch size.')
 flags.DEFINE_float('keep_prob', 0.5, 'Keep probability for drop out.')
-flags.DEFINE_float('learning_rate', 0.05, 'Initial learning rate.')
+flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
 
 def inference(data, data_size, keep_prob):
     # # Hidden layer 1
@@ -81,7 +81,7 @@ def loss(logits, labels):
     labels = tf.to_int64(labels)
     cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels, name='xentropy')
     vars = tf.trainable_variables()
-    reg = tf.add_n([tf.nn.l2_loss(v) for v in vars])*0.1
+    reg = tf.add_n([tf.nn.l2_loss(v) for v in vars])*0.01
 #    reg = 0.01*(tf.nn.l2_loss(w) + tf.nn.l2_loss(b))
     loss = tf.reduce_mean(cross_entropy, name='xentropy_mean') + reg
     return loss
@@ -233,7 +233,7 @@ def test_data():
     images32 = np.array(images32)
     images32 = rgb2gray(np.array(images32))
     images32 = images32.reshape(-1, 784)
-    return images32
+    return images, images32, labels
 
 
 ROOT_PATH = "/home/hguan/project/machine-learning/garage/"
@@ -241,7 +241,7 @@ train_data_dir = os.path.join(ROOT_PATH, "training")
 test_data_dir = os.path.join(ROOT_PATH, "testing")
 
 # Training data
-images, labels = load_data(test_data_dir)
+images, labels = load_data(train_data_dir+"/0")
 images_array = np.array(images)
 labels_array = np.array(labels)
 
@@ -253,24 +253,24 @@ images32 = images32.reshape(-1, 784)
 
 #run_training(images32, labels)
 
-#images32 = test_data()
+images, images32, labels = test_data()
 predicted = run_classifier(images32)
 
 # Print the real and predicted labels
 print(labels)
 print(predicted)
-
+pred_name = ["", "Nissan", "BMW"]
 # Display the predictions and the ground truth visually.
-fig = plt.figure(figsize=(16, 16))
-for i in range(len(images)):
-#    print('i=', i)
+fig = plt.figure(figsize=(32, 32))
+for i in range(len(images32)):
+    print('i=', i)
     truth = labels[i]
     prediction = predicted[i]
-    plt.subplot(20, 6,1+i)
+    plt.subplot(10, 6,1+i)
     plt.axis('off')
     color='green' if truth == prediction else 'red'
-    plt.text(700, 300, "Truth:        {0}\nPrediction: {1}".format(truth, prediction),
-             fontsize=12, color=color)
+    plt.text(700, 300, "Truth:        {0}\nPrediction: {1}".format(truth, pred_name[prediction]),
+             fontsize=6, color=color)
     plt.imshow(images[i])
 
 plt.show()
